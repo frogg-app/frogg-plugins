@@ -85,9 +85,9 @@ cd plugins/<category>
 frogg plugins new acme.my-plugin
 ```
 
-In the generated folder, drop the `devDependencies` from `package.json` (the root provides
-`esbuild` and `typescript`, and `@frogg/plugin-api` is not on npm) and make `tsconfig.json`
-extend `../../../tsconfig.base.json`, as the examples do.
+The scaffold builds as generated: it carries its own copy of the API types in
+`types/frogg-plugin-api.d.ts`. To share the repo-wide copy instead, delete that folder and make
+`tsconfig.json` extend `../../../tsconfig.base.json`, as the examples do.
 
 Develop against a running host with developer mode on: `frogg plugins link plugins/<category>/<id>`.
 Bump `version` in `frogg-plugin.json` for every release. Each deploy replaces the Pages site, so
