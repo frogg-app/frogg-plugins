@@ -1,0 +1,14 @@
+{
+  "id": "example.hello",
+  "name": "Hello",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "scope": "daemon",
+  "description": "Minimal daemon plugin: one Command Center entry backed by a plugin RPC",
+  "author": "Frogg",
+  "entry": { "daemon": "dist/daemon.js" },
+  "capabilities": ["rpc", "ui.contribute", "agent.read"],
+  "contributes": {
+    "commands": [{ "id": "example.hello.greet", "title": "Hello: greet" }]
+  }
+}

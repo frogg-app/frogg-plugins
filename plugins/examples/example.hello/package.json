@@ -1,0 +1,13 @@
+{
+  "name": "example.hello",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/daemon.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/daemon.js",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "@frogg/plugin-api": "^1.0.0"
+  }
+}

@@ -1,0 +1,31 @@
+name: Validate plugins
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck plugins
+        run: npm run typecheck --workspaces --if-present
+      - name: Build, validate manifests and pack
+        run: scripts/build-all.sh
+      - name: Build index.json (unsigned)
+        run: >-
+          npx frogg plugins index build
+          --plugins plugins
+          --categories categories.json
+          --tarballs out
+          --base-url https://example.invalid/
+          --commit "${{ github.sha }}"
+          --out out/index.json

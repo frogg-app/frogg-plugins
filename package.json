@@ -1,0 +1,12 @@
+{
+  "name": "frogg-plugin-repo",
+  "private": true,
+  "workspaces": [
+    "plugins/*/*"
+  ],
+  "devDependencies": {
+    "@frogg/cli": "latest",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}
