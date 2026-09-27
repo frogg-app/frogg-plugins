@@ -21,5 +21,5 @@ for manifest in "$root"/plugins/*/*/frogg-plugin.json; do
   fi
   echo "==> $category/$id"
   npm run --prefix "$dir" build
-  npx frogg plugins pack "$dir" --out "$root/out"
+  frogg plugins pack "$dir" --out "$root/out"
 done

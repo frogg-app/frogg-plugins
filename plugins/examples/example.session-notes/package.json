@@ -6,8 +6,5 @@
   "scripts": {
     "build": "esbuild src/daemon.ts src/client.ts --bundle --platform=neutral --format=esm --target=es2022 --outdir=dist",
     "typecheck": "tsc -p ."
-  },
-  "devDependencies": {
-    "@frogg/plugin-api": "^1.0.0"
   }
 }

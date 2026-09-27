@@ -25,12 +25,17 @@ jobs:
           cache: npm
       - uses: actions/configure-pages@v5
         id: pages
+      - name: Install frogg CLI and plugin API types
+        env:
+          FROGG_VERSION: ${{ vars.FROGG_VERSION }}
+          FROGG_REF: ${{ vars.FROGG_REF }}
+        run: scripts/fetch-frogg.sh
       - run: npm ci
       - name: Build and pack every plugin
         run: scripts/build-all.sh
       - name: Build index.json
         run: >-
-          npx frogg plugins index build
+          frogg plugins index build
           --plugins plugins
           --categories categories.json
           --tarballs out
@@ -41,10 +46,10 @@ jobs:
       - name: Sign index.json
         env:
           PLUGIN_REPO_SIGNING_KEY: ${{ secrets.PLUGIN_REPO_SIGNING_KEY }}
-        run: npx frogg plugins index sign out/index.json --key-env PLUGIN_REPO_SIGNING_KEY
+        run: frogg plugins index sign out/index.json --key-env PLUGIN_REPO_SIGNING_KEY
       - name: Verify signature and tarball hashes
         run: >-
-          npx frogg plugins index verify out/index.json
+          frogg plugins index verify out/index.json
           --public-key "${{ vars.PLUGIN_REPO_PUBLIC_KEY }}"
           --tarballs out
       - uses: actions/upload-pages-artifact@v3

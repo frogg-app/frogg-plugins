@@ -15,6 +15,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Install frogg CLI and plugin API types
+        env:
+          FROGG_VERSION: ${{ vars.FROGG_VERSION }}
+          FROGG_REF: ${{ vars.FROGG_REF }}
+        run: scripts/fetch-frogg.sh
       - run: npm ci
       - name: Typecheck plugins
         run: npm run typecheck --workspaces --if-present
@@ -22,7 +27,7 @@ jobs:
         run: scripts/build-all.sh
       - name: Build index.json (unsigned)
         run: >-
-          npx frogg plugins index build
+          frogg plugins index build
           --plugins plugins
           --categories categories.json
           --tarballs out
