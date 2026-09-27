@@ -1,0 +1,10 @@
+{
+  "name": "example.clock",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/client.ts --bundle --platform=neutral --format=esm --target=es2022 --outfile=dist/client.js",
+    "typecheck": "tsc -p ."
+  }
+}
