@@ -1,5 +1,6 @@
 {
   "categories": [
+    { "id": "features", "title": "Frogg features", "description": "Optional parts of Frogg, switched on per host" },
     { "id": "integrations", "title": "Integrations", "description": "Issue trackers, chat, CI" },
     { "id": "productivity", "title": "Productivity", "description": "Workflow helpers" }
   ]

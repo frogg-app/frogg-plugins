@@ -1,0 +1,13 @@
+{
+  "id": "frogg.companion",
+  "name": "Companion",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "scope": "daemon",
+  "description": "Voice companion that talks you through your agents. Installing it switches on the Companion built into Frogg for this host.",
+  "author": "Frogg",
+  "homepage": "https://frogg.app/docs/using-frogg/voice-and-companion/",
+  "entry": { "daemon": "dist/daemon.js" },
+  "capabilities": [],
+  "contributes": { "features": ["companion"] }
+}
