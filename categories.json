@@ -1,6 +1,5 @@
 {
   "categories": [
-    { "id": "examples", "title": "Examples", "description": "Reference plugins for authors" },
     { "id": "integrations", "title": "Integrations", "description": "Issue trackers, chat, CI" },
     { "id": "productivity", "title": "Productivity", "description": "Workflow helpers" }
   ]

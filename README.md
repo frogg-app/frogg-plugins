@@ -58,8 +58,8 @@ scripts/build-all.sh
      `FROGG_REF`), see above; optionally `PLUGIN_REPO_NAME` = the display name written into
      `index.json`.
    - **Pages**: source = GitHub Actions.
-4. Delete `plugins/examples/` and the `examples` category, add your own plugins, run
-   `npm install` to refresh `package-lock.json`, push to `main`.
+4. Edit the categories in `categories.json`, add your own plugins, run `npm install` to refresh
+   `package-lock.json`, push to `main`.
 5. Point the brand at it in `brand.json`:
 
    ```json
@@ -87,7 +87,7 @@ frogg plugins new acme.my-plugin
 
 The scaffold builds as generated: it carries its own copy of the API types in
 `types/frogg-plugin-api.d.ts`. To share the repo-wide copy instead, delete that folder and make
-`tsconfig.json` extend `../../../tsconfig.base.json`, as the examples do.
+`tsconfig.json` extend `../../../tsconfig.base.json`.
 
 Develop against a running host with developer mode on: `frogg plugins link plugins/<category>/<id>`.
 Bump `version` in `frogg-plugin.json` for every release. Each deploy replaces the Pages site, so

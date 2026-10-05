@@ -22,7 +22,8 @@ jobs:
         run: scripts/fetch-frogg.sh
       - run: npm ci
       - name: Typecheck plugins
-        run: npm run typecheck --workspaces --if-present
+        # Skipped while plugins/ is empty; npm fails with no workspaces.
+        run: if compgen -G 'plugins/*/*/package.json' >/dev/null; then npm run typecheck --workspaces --if-present; fi
       - name: Build, validate manifests and pack
         run: scripts/build-all.sh
       - name: Build index.json (unsigned)

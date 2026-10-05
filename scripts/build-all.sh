@@ -2,6 +2,7 @@
 # Builds and packs every plugin under plugins/<category>/<id>/ into out/.
 # Usage: scripts/build-all.sh
 set -euo pipefail
+shopt -s nullglob
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 mkdir -p "$root/out"
