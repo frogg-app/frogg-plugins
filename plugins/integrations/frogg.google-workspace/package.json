@@ -1,0 +1,14 @@
+{
+  "name": "frogg.google-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/daemon.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/daemon.js",
+    "typecheck": "tsc -p .",
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5"
+  }
+}

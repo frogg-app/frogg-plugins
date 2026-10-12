@@ -1,0 +1,106 @@
+{
+  "id": "frogg.google-workspace",
+  "name": "Google Workspace",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "scope": "daemon",
+  "description": "Syncs Frogg into Google Sheets, Docs and Slides: an agent run ledger, two-way project to-dos, a report Doc per finished agent, Doc comments sent to the agent with replies posted back, plans exported for review, and release decks.",
+  "author": "Frogg",
+  "homepage": "https://frogg.app/docs/",
+  "entry": { "daemon": "dist/daemon.js" },
+  "capabilities": [
+    "network",
+    "settings.store",
+    "ui.contribute",
+    "rpc",
+    "agent.read",
+    "agent.write",
+    "workspaces.read",
+    "todos.read",
+    "todos.write"
+  ],
+  "contributes": {
+    "commands": [
+      { "id": "google.connect", "title": "Google: connect account", "description": "Sign in with a device code shown in the Google panel" },
+      { "id": "google.disconnect", "title": "Google: disconnect account" },
+      { "id": "google.sync", "title": "Google: sync now", "description": "Push the ledger and to-dos, and read Sheet edits and Doc comments" },
+      { "id": "google.deck", "title": "Google: create release deck", "description": "A Slides deck from recently finished agents" }
+    ],
+    "sessionActions": [
+      { "id": "google.report", "title": "Export report to Google Docs", "icon": "file-text" },
+      { "id": "google.plan", "title": "Send plan to Google Docs", "icon": "list-checks" }
+    ],
+    "panels": [{ "id": "google", "title": "Google Workspace", "kind": "markdown" }],
+    "settings": [
+      {
+        "key": "clientId",
+        "title": "OAuth client ID",
+        "type": "string",
+        "required": true,
+        "description": "Google Cloud console → APIs & Services → Credentials → OAuth client of type \"TVs and Limited Input devices\"."
+      },
+      {
+        "key": "clientSecret",
+        "title": "OAuth client secret",
+        "type": "secret",
+        "required": true,
+        "description": "Shown next to the client ID. Device clients still need it for the token exchange."
+      },
+      {
+        "key": "allowedEmails",
+        "title": "Google accounts allowed to drive agents",
+        "type": "string",
+        "description": "Comma-separated. Only comments and Sheet edits from these accounts reach agents and to-dos. Empty means only the connected account."
+      },
+      {
+        "key": "ledger",
+        "title": "Agent run ledger (Sheets)",
+        "type": "boolean",
+        "default": true,
+        "description": "One row per agent, updated as it runs."
+      },
+      {
+        "key": "reports",
+        "title": "Report Doc when an agent finishes",
+        "type": "select",
+        "default": "all",
+        "options": [
+          { "value": "all", "label": "Every agent" },
+          { "value": "manual", "label": "Only when I export one" }
+        ]
+      },
+      {
+        "key": "todos",
+        "title": "Sync project to-dos with Sheets",
+        "type": "boolean",
+        "default": true,
+        "description": "Two-way. Edits in the Sheet need remote control turned on for this plugin."
+      },
+      {
+        "key": "comments",
+        "title": "Send Doc comments to the agent",
+        "type": "boolean",
+        "default": true,
+        "description": "Comments on a report or plan Doc that start with @frogg go to that agent; its answer is posted as a reply. Needs remote control."
+      },
+      {
+        "key": "pollSeconds",
+        "title": "Check Google for changes every",
+        "type": "select",
+        "default": "60",
+        "options": [
+          { "value": "30", "label": "30 seconds" },
+          { "value": "60", "label": "1 minute" },
+          { "value": "300", "label": "5 minutes" }
+        ]
+      },
+      {
+        "key": "folderName",
+        "title": "Drive folder",
+        "type": "string",
+        "default": "Frogg",
+        "description": "Everything the plugin creates goes in this folder (and per-project subfolders)."
+      }
+    ]
+  }
+}
