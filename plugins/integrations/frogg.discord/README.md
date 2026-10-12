@@ -15,8 +15,9 @@ them from there. Daemon plugin, Plugins API v2. The bot only makes outbound conn
 - **Alerts:** the users in **Ping on alerts** are mentioned when an agent finishes, errors or
   asks for permission. Like push notifications, there's no ping while a Frogg app is in active
   use, unless **Ping even while I'm in the app** is on. The thread updates either way.
-- **Approve / Deny / Always buttons** on permission requests. Always only appears when the
-  provider offers a standing rule. Requests answered in Frogg first get closed in Discord.
+- **Approve / Deny / Always buttons** on permission requests, showing how long ago each was
+  asked. Always only appears when the provider offers a standing rule. Requests answered in
+  Frogg first get closed in Discord.
 - **`/frogg` commands:**
 
   | Command | Does | Needs remote control |
@@ -28,7 +29,9 @@ them from there. Daemon plugin, Plugins API v2. The bot only makes outbound conn
   | `/frogg reply text [agent] [attachment]` | Sends a message (and an image or file) to the agent | Yes |
   | `/frogg todo add title [description] [project] [priority]` | Adds a project to-do | Yes |
 
-  `agent` and `project` default to the thread you run the command in. `workspace`, `provider`,
+  `agent` and `project` default to the thread you run the command in. Agents started with
+  `/frogg new` are labelled `discord.origin=discord` (and `discord.user=<id>`), which is how
+  **Open a thread for: Only agents started from Discord** finds them. `workspace`, `provider`,
   `agent` and `project` autocomplete.
 - **Plain replies in threads** (optional): with **Read thread messages** on, anything an
   allowlisted user types in an agent's thread goes to that agent (images and files included).
@@ -44,16 +47,17 @@ A Discord account that can message an agent can make it run code on your host. S
 2. **User allowlist.** Only users listed in **Allowed Discord user IDs** can run commands, use
    autocomplete, press buttons or have their thread messages forwarded. An empty list means
    nobody. Server roles and permissions are not trusted.
-3. **Read-only until remote control is on.** `agent.manage`, `agent.permissions` and
-   `todos.write` are installed switched off. The plugin also holds `/frogg reply` and thread
-   messages to the same switch. The host owner enables it with:
+3. **Read-only until remote control is on.** `agent.manage`, `agent.permissions`,
+   `todos.write` and replies to agents are installed switched off, and the host enforces it.
+   The host owner enables it with:
 
    ```bash
    frogg plugins remote-control frogg.discord on
    ```
 
-   Until then, permission requests show up without buttons and every write command explains
-   that remote control is off.
+   Until then, permission requests don't reach Discord and every write command explains that
+   remote control is off. The switch applies live: turning it on posts any pending requests
+   with buttons, and turning it off removes the buttons from open requests.
 4. **Audited.** Every write names the Discord user who caused it (`actor: "discord:<userId>"`)
    in the host's audit log.
 5. **No mass pings.** Agent text has `@everyone`, `@here` and role mentions defused. Messages
@@ -126,8 +130,9 @@ Status cards and turn progress messages are debounced per message: at most one e
 
 ## State
 
-`<dataDir>/state.json` maps agents to their thread and status message, and pending permission
-buttons to their requests. After a restart the bot keeps editing the same threads. It closes
+`<dataDir>/state.json` maps agents to their thread, status message and timeline cursor, and
+pending permission buttons to their requests. After a restart the bot keeps editing the same
+threads and replays up to 500 timeline entries per agent from where it left off. It closes
 permission messages that were answered while it was offline and posts any it missed. Deleting
 a thread or its status message by hand makes the plugin forget it, and a new thread opens on
 the agent's next activity.
@@ -150,5 +155,3 @@ Layout: `src/daemon.ts` (lifecycle, panel), `src/bridge.ts` (Frogg → Discord),
 
 - **Voice notes.** Discord voice messages are OGG/Opus, but `ctx.speech.transcribe` takes raw
   PCM16. This needs the host to accept encoded audio, or an Opus decoder bundled here.
-- **Catching up after downtime.** Turn progress resumes live after a restart. Steps an agent
-  took while the bot was offline aren't backfilled; the final answer and status still are.

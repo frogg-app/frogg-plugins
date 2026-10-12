@@ -283,6 +283,20 @@ export function parsePermissionCustomId(
   return { decision: decision as PluginPermissionDecision, key };
 }
 
+/** Label set on agents started from Discord, so threads="discord" mode can follow them. */
+export const ORIGIN_LABEL = "discord.origin";
+
+export function permissionButtons(key: string, canAlways: boolean): ActionRow[] {
+  const buttons: Button[] = [
+    { type: 2, style: 3, label: "Approve", custom_id: permissionCustomId("allow", key) },
+    { type: 2, style: 4, label: "Deny", custom_id: permissionCustomId("deny", key) },
+  ];
+  if (canAlways) {
+    buttons.push({ type: 2, style: 2, label: "Always", custom_id: permissionCustomId("always", key) });
+  }
+  return [{ type: 1, components: buttons }];
+}
+
 export function permissionMessage(input: {
   request: PluginPermissionRequest;
   agent: Pick<PluginAgentSummary, "id" | "title"> | null;
@@ -300,20 +314,17 @@ export function permissionMessage(input: {
   if (request.inputPreview) {
     lines.push("```", truncate(request.inputPreview.replace(/```/g, "ˋˋˋ"), 1200), "```");
   }
-  if (!input.remoteControl) lines.push("-# Remote control is off on the host, so answer in Frogg.");
-  const buttons: Button[] = [
-    { type: 2, style: 3, label: "Approve", custom_id: permissionCustomId("allow", input.key) },
-    { type: 2, style: 4, label: "Deny", custom_id: permissionCustomId("deny", input.key) },
-  ];
-  if (request.canAlways) {
-    buttons.push({ type: 2, style: 2, label: "Always", custom_id: permissionCustomId("always", input.key) });
-  }
+  const requested = request.requestedAt ? Date.parse(request.requestedAt) : NaN;
+  if (Number.isFinite(requested)) lines.push(`-# Requested <t:${Math.floor(requested / 1000)}:R>`);
+  if (!input.remoteControl) lines.push(REMOTE_OFF_NOTE);
   return {
     content: truncate(lines.join("\n"), MESSAGE_LIMIT),
-    components: input.remoteControl ? [{ type: 1, components: buttons }] : [],
+    components: input.remoteControl ? permissionButtons(input.key, request.canAlways) : [],
     allowedUserMentions: [...input.mentionUserIds],
   };
 }
+
+const REMOTE_OFF_NOTE = "-# Remote control is off on the host, so answer in Frogg.";
 
 /** The permission message after it was answered: same text, no buttons, plus the outcome. */
 export function resolvedPermissionContent(

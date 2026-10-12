@@ -11,6 +11,8 @@ import {
   MESSAGE_LIMIT,
   parsePermissionCustomId,
   permissionCustomId,
+  ORIGIN_LABEL,
+  permissionButtons,
   permissionMessage,
   presenceText,
   resolvedPermissionContent,
@@ -166,4 +168,22 @@ test("invite URL requests bot + commands scopes and thread permissions", () => {
   assert.equal(perms, invitePermissions());
   assert.ok(perms & (1n << 38n), "SendMessagesInThreads");
   assert.ok(!(perms & 8n), "never Administrator");
+});
+
+test("permissionMessage shows request age when the host knows it", () => {
+  const m = permissionMessage({
+    request: { ...request, requestedAt: "2026-10-12T10:00:00.000Z" },
+    agent: agent(), key: "k", mentionUserIds: [], remoteControl: true,
+  });
+  assert.match(m.content, /Requested <t:1791799200:R>/);
+  const noTime = permissionMessage({ request, agent: agent(), key: "k", mentionUserIds: [], remoteControl: true });
+  assert.ok(!noTime.content.includes("Requested"));
+});
+
+test("permissionButtons matches the message's buttons for re-rendering", () => {
+  assert.deepEqual(
+    permissionButtons("k", true),
+    permissionMessage({ request: { ...request, canAlways: true }, agent: agent(), key: "k", mentionUserIds: [], remoteControl: true }).components,
+  );
+  assert.equal(ORIGIN_LABEL, "discord.origin");
 });

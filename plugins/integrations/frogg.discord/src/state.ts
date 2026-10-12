@@ -2,6 +2,7 @@
 // daemon restart keeps editing the same Discord messages instead of opening new threads.
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { PluginPermissionRequest } from "@frogg/plugin-api";
 
 export interface AgentThread {
   threadId: string;
@@ -10,6 +11,8 @@ export interface AgentThread {
   statusMessageId: string;
   /** The guild/channel this was created for; a settings change to another channel starts over. */
   homeChannelId: string;
+  /** Timeline resume point (host cursor) after the last entry this plugin handled. */
+  cursor?: string;
 }
 
 export interface PendingPermission {
@@ -17,6 +20,8 @@ export interface PendingPermission {
   requestId: string;
   channelId: string;
   messageId: string;
+  /** Kept so the message can be re-rendered when remote control flips. */
+  request?: PluginPermissionRequest;
 }
 
 interface StateFile {
@@ -75,6 +80,25 @@ export class StateStore {
     this.save();
   }
 
+  /** Cursors change on every timeline entry, so their writes are batched. */
+  setCursor(agentId: string, cursor: string): void {
+    const t = this.data.agents[agentId];
+    if (!t || t.cursor === cursor) return;
+    t.cursor = cursor;
+    this.saveSoon();
+  }
+
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private saveSoon(): void {
+    if (this.saveTimer) return;
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      this.save();
+    }, 2000);
+    this.saveTimer.unref?.();
+  }
+
   permission(key: string): PendingPermission | undefined {
     return this.data.permissions[key];
   }
@@ -113,6 +137,11 @@ export class StateStore {
   }
 
   async flush(): Promise<void> {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+      this.save();
+    }
     await this.writing;
   }
 }

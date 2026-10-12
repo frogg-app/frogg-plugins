@@ -18,6 +18,7 @@ import type {
   PluginDisposable,
   PluginPermissionRequest,
   PluginPermissionResolved,
+  PluginTimelineEntry,
 } from "@frogg/plugin-api";
 import type { DiscordConfig } from "./config.ts";
 import { remoteControlEnabled } from "./access.ts";
@@ -25,6 +26,7 @@ import { KeyedDebouncer } from "./debounce.ts";
 import {
   finalAnswer,
   mentions,
+  ORIGIN_LABEL,
   permissionMessage,
   presenceText,
   resolvedPermissionContent,
@@ -45,6 +47,8 @@ interface Turn {
 }
 
 const UNKNOWN_MESSAGE = 10008;
+/** Most timeline entries replayed per agent after a restart. */
+const CATCH_UP_LIMIT = 500;
 const UNKNOWN_CHANNEL = 10003;
 
 export function toPayload(m: OutgoingMessage): MessageCreateOptions & MessageEditOptions {
@@ -69,6 +73,10 @@ export class FroggToDiscord {
   /** Permission key -> Discord user who pressed the button, for the "Approved by" line. */
   private readonly answeredBy = new Map<string, { userId: string; always: boolean }>();
   private readonly disposables: PluginDisposable[] = [];
+  /** Live timeline events held back while an agent's offline gap is replayed. */
+  private catchingUp: Map<string, PluginAgentEvent[]> | null = null;
+  /** Highest seq handled per agent in this process, to drop replay/live overlap. */
+  private readonly lastSeq = new Map<string, number>();
   private readonly statusEdits: KeyedDebouncer<string>;
   private readonly turnEdits: KeyedDebouncer<Turn>;
   private readonly presence: KeyedDebouncer<"presence">;
@@ -102,15 +110,21 @@ export class FroggToDiscord {
   }
 
   async start(): Promise<void> {
-    const { agents, permissions } = this.ctx;
+    const { agents, permissions, host } = this.ctx;
     for (const agent of await agents.list()) this.summaries.set(agent.id, agent);
+    this.catchingUp = new Map();
     this.disposables.push(agents.onEvent((e) => this.onAgentEvent(e)));
     // Forced so the thread always gets the final answer; presence only decides who gets pinged.
     this.disposables.push(agents.onAttention((e) => void this.onAttention(e), { force: true }));
+    await this.catchUp();
     if (permissions) {
+      // The host withholds these while remote control is off; list() catches up when it flips on.
       this.disposables.push(permissions.onRequest((r) => void this.onPermissionRequest(r)));
       this.disposables.push(permissions.onResolved((r) => void this.onPermissionResolved(r)));
       await this.syncPermissions();
+    }
+    if (host?.onRemoteControlChange) {
+      this.disposables.push(host.onRemoteControlChange((on) => void this.onRemoteControlChange(on)));
     }
     // Refresh status messages for agents that already have threads (they may have changed while
     // the bot was offline).
@@ -145,12 +159,16 @@ export class FroggToDiscord {
   // -------------------------------------------------------------------------
   // Frogg events
 
+  private wantsThread(agent: PluginAgentSummary | undefined): agent is PluginAgentSummary {
+    return !!agent && (this.config.threads === "all" || agent.labels?.[ORIGIN_LABEL] === "discord");
+  }
+
   private onAgentEvent(e: PluginAgentEvent): void {
     if (e.kind === "state" && e.agent) {
       this.summaries.set(e.agentId, e.agent);
       if (this.config.presence) this.presence.schedule("presence");
       if (this.threadFor(e.agentId)) this.statusEdits.schedule(e.agentId);
-      else if (this.config.threads === "all" && e.agent.status === "running") {
+      else if (e.agent.status === "running" && this.wantsThread(e.agent)) {
         void this.ensureThread(e.agent);
       }
       return;
@@ -159,13 +177,86 @@ export class FroggToDiscord {
       void this.onRemoved(e.agentId);
       return;
     }
-    if (e.kind === "timeline" && e.entry) this.onTimeline(e.agentId, e.entry.item);
+    if (e.kind === "timeline" && e.entry) {
+      const held = this.catchingUp?.get(e.agentId);
+      if (held) held.push(e);
+      else this.handleEntry(e.agentId, e.entry, e.cursor);
+    }
   }
 
-  private onTimeline(agentId: string, item: NonNullable<PluginAgentEvent["entry"]>["item"]): void {
+  private handleEntry(agentId: string, entry: PluginTimelineEntry, cursor: string | undefined): void {
+    const last = this.lastSeq.get(agentId);
+    if (last !== undefined && entry.seq <= last) return;
+    this.lastSeq.set(agentId, entry.seq);
+    this.onTimeline(agentId, entry.item);
+    if (cursor && this.threadFor(agentId)) this.state.setCursor(agentId, cursor);
+  }
+
+  /**
+   * Replays what agents with threads did while the bot was offline (from the persisted cursor),
+   * holding live events for those agents until their replay is done.
+   */
+  private async catchUp(): Promise<void> {
+    const ids = [...this.summaries.keys()].filter((id) => this.threadFor(id) && this.state.thread(id)?.cursor);
+    for (const id of ids) this.catchingUp!.set(id, []);
+    for (const id of ids) {
+      try {
+        let cursor: string | null = this.state.thread(id)!.cursor!;
+        let seen = 0;
+        for (;;) {
+          const page = await this.ctx.agents.getTimeline(id, { cursor, limit: 200 });
+          if (page.reset) {
+            // Timeline rebuilt: nothing reliable to replay; resume from its current end.
+            this.lastSeq.delete(id);
+            const latest = await this.ctx.agents.getTimeline(id, { limit: 1 });
+            if (latest.cursor) this.state.setCursor(id, latest.cursor);
+            for (const e of latest.entries) this.lastSeq.set(id, e.seq);
+            break;
+          }
+          for (const entry of page.entries) this.handleEntry(id, entry, undefined);
+          if (page.cursor) {
+            cursor = page.cursor;
+            this.state.setCursor(id, page.cursor);
+          }
+          seen += page.entries.length;
+          if (!page.hasMore || seen >= CATCH_UP_LIMIT || !page.entries.length) break;
+        }
+      } catch (err) {
+        this.ctx.log.warn("discord: timeline catch-up failed", { agentId: id, error: String(err) });
+      }
+      const held = this.catchingUp!.get(id) ?? [];
+      this.catchingUp!.delete(id);
+      for (const e of held) if (e.entry) this.handleEntry(id, e.entry, e.cursor);
+      // A replayed turn whose finish happened offline would otherwise stay "Working…".
+      const turn = this.turns.get(id);
+      const status = this.summaries.get(id)?.status;
+      if (turn && !turn.done && status !== "running" && status !== "initializing") {
+        turn.done = status === "error" ? "error" : "finished";
+        this.turnEdits.schedule(turn);
+      }
+    }
+    this.catchingUp = null;
+  }
+
+  private async onRemoteControlChange(enabled: boolean): Promise<void> {
+    this.ctx.log.info("discord: remote control changed", { enabled });
+    for (const [key, p] of this.state.allPermissions()) {
+      if (!p.request) continue;
+      const agent = this.summaries.get(p.agentId) ?? null;
+      const m = permissionMessage({ request: p.request, agent, key, mentionUserIds: [], remoteControl: enabled });
+      await this.editMessage(p.channelId, p.messageId, {
+        content: m.content,
+        components: m.components as MessageEditOptions["components"],
+        allowedMentions: { parse: [] },
+      }).catch((err) => this.ctx.log.debug("discord: re-rendering permission failed", { error: String(err) }));
+    }
+    if (enabled && this.ctx.permissions) await this.syncPermissions();
+  }
+
+  private onTimeline(agentId: string, item: PluginTimelineEntry["item"]): void {
     if (!this.threadFor(agentId)) {
       const agent = this.summaries.get(agentId);
-      if (!(this.config.threads === "all" && agent && item.type === "user_message")) return;
+      if (!(this.wantsThread(agent) && item.type === "user_message")) return;
       void this.ensureThread(agent);
     }
     if (item.type === "user_message") {
@@ -266,7 +357,7 @@ export class FroggToDiscord {
     });
     const sent = await this.post(r.agentId, message);
     if (sent) {
-      this.state.setPermission(key, { agentId: r.agentId, requestId: r.requestId, ...sent });
+      this.state.setPermission(key, { agentId: r.agentId, requestId: r.requestId, ...sent, request: r });
     }
     this.statusEdits.schedule(r.agentId);
   }
@@ -290,7 +381,14 @@ export class FroggToDiscord {
 
   /** Posts requests that arrived while offline and closes ones answered meanwhile. */
   private async syncPermissions(): Promise<void> {
-    const pending = await this.ctx.permissions.list();
+    let pending: PluginPermissionRequest[];
+    try {
+      pending = await this.ctx.permissions.list();
+    } catch (err) {
+      // Forbidden while remote control is off; onRemoteControlChange retries.
+      this.ctx.log.debug("discord: listing permissions failed", { error: String(err) });
+      return;
+    }
     const live = new Set(pending.map((p) => `${p.agentId}\u0000${p.requestId}`));
     for (const [key, p] of this.state.allPermissions()) {
       if (live.has(`${p.agentId}\u0000${p.requestId}`)) continue;
@@ -322,7 +420,7 @@ export class FroggToDiscord {
 
   private ensureThreadIfWanted(agent: PluginAgentSummary): Promise<AgentThread | null> {
     if (this.threadFor(agent.id)) return Promise.resolve(this.state.thread(agent.id)!);
-    if (this.config.threads !== "all") return Promise.resolve(null);
+    if (!this.wantsThread(agent)) return Promise.resolve(null);
     return this.ensureThread(agent);
   }
 

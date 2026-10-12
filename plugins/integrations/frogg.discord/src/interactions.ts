@@ -19,6 +19,7 @@ import {
   agentTitle,
   guessMime,
   hostStatus,
+  ORIGIN_LABEL,
   parsePermissionCustomId,
   sanitize,
   shortId,
@@ -132,6 +133,7 @@ export class DiscordToFrogg {
           prompt: i.options.getString("prompt", true),
           ...(model ? { model } : {}),
           ...(title ? { title } : {}),
+          labels: { [ORIGIN_LABEL]: "discord", "discord.user": i.user.id },
           ...actor,
         });
         const thread = await this.bridge.ensureThread(agent);

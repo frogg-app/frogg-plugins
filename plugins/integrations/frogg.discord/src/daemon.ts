@@ -54,6 +54,7 @@ export default async function activate(ctx: PluginContext): Promise<void> {
     if (!result.ok) {
       config = null;
       setPhase({ kind: "unconfigured", missing: result.missing });
+      ctx.log.info("discord: not configured", { missing: result.missing });
       return;
     }
     const cfg = result.config;
@@ -125,6 +126,7 @@ export default async function activate(ctx: PluginContext): Promise<void> {
   });
 
   ctx.settings.onChange(() => restarts.schedule("restart"));
+  const remoteWatch = ctx.host?.onRemoteControlChange?.(() => ctx.ui?.refreshPanel("discord"));
 
   ctx.rpc?.handle("panel.discord.render", () => ({ kind: "markdown", markdown: panelMarkdown(phase, config, ctx) }));
   ctx.rpc?.handle("discord.reconnect", async () => {
@@ -135,6 +137,7 @@ export default async function activate(ctx: PluginContext): Promise<void> {
 
   ctx.signal.addEventListener("abort", () => {
     restarts.stop();
+    remoteWatch?.dispose();
     void stop();
   });
 

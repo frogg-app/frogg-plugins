@@ -33,3 +33,18 @@ test("a corrupt state file starts empty", async () => {
   await s.load();
   assert.equal(s.thread("x"), undefined);
 });
+
+test("cursors persist (batched) and survive a reload", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "frogg-discord-"));
+  const a = StateStore.forDataDir(dir);
+  await a.load();
+  a.setThread("agent1", { threadId: "t1", statusChannelId: "c", statusMessageId: "m", homeChannelId: "c" });
+  a.setCursor("agent1", "cur-1");
+  a.setCursor("agent1", "cur-2");
+  a.setCursor("nobody", "ignored");
+  await a.flush();
+  const b = StateStore.forDataDir(dir);
+  await b.load();
+  assert.equal(b.thread("agent1")?.cursor, "cur-2");
+  assert.equal(b.thread("nobody"), undefined);
+});
