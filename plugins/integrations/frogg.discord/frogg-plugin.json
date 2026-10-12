@@ -1,7 +1,7 @@
 {
   "id": "frogg.discord",
   "name": "Discord",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "apiVersion": 2,
   "scope": "daemon",
   "description": "A Discord thread per agent with live status, final answers and diff stats; alerts; Approve/Deny buttons for permission requests; and /frogg slash commands to start, stop and message agents.",

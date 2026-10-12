@@ -13,6 +13,8 @@ export interface AgentThread {
   homeChannelId: string;
   /** Timeline resume point (host cursor) after the last entry this plugin handled. */
   cursor?: string;
+  /** Newest Discord message in the thread already seen, for forwarding messages sent offline. */
+  lastMessageId?: string;
 }
 
 export interface PendingPermission {
@@ -86,6 +88,17 @@ export class StateStore {
     if (!t || t.cursor === cursor) return;
     t.cursor = cursor;
     this.saveSoon();
+  }
+
+  setLastMessage(agentId: string, messageId: string): void {
+    const t = this.data.agents[agentId];
+    if (!t || (t.lastMessageId && BigInt(t.lastMessageId) >= BigInt(messageId))) return;
+    t.lastMessageId = messageId;
+    this.saveSoon();
+  }
+
+  allThreads(): [string, AgentThread][] {
+    return Object.entries(this.data.agents);
   }
 
   private saveTimer: ReturnType<typeof setTimeout> | null = null;

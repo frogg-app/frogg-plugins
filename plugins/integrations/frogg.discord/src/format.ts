@@ -398,6 +398,28 @@ export function todoCreated(todo: Pick<PluginTodo, "id" | "title" | "priority" |
 }
 
 // ---------------------------------------------------------------------------
+// Thread backlog
+
+/** Messages older than this are not forwarded after downtime; stale instructions do more harm. */
+export const BACKLOG_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Of the messages a thread received after `afterId`, the ones to forward now: human-authored,
+ * recent enough, oldest first.
+ */
+export function selectBacklog<M extends { id: string; createdTimestamp: number; bot: boolean }>(
+  messages: readonly M[],
+  afterId: string,
+  now: number,
+  maxAgeMs = BACKLOG_MAX_AGE_MS,
+): M[] {
+  const after = BigInt(afterId);
+  return messages
+    .filter((m) => BigInt(m.id) > after && !m.bot && now - m.createdTimestamp <= maxAgeMs)
+    .sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
+}
+
+// ---------------------------------------------------------------------------
 // Setup
 
 /** Bot permissions the invite asks for. */

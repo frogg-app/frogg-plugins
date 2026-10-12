@@ -22,6 +22,7 @@ import {
   ORIGIN_LABEL,
   parsePermissionCustomId,
   sanitize,
+  selectBacklog,
   shortId,
   todoCreated,
   truncate,
@@ -286,6 +287,7 @@ export class DiscordToFrogg {
     if (!message.channel.isThread()) return;
     const agentId = this.bridge.agentForThread(message.channel.id);
     if (!agentId) return;
+    this.state.setLastMessage(agentId, message.id);
     const access = checkAccess(
       this.config,
       this.access({ guildId: message.guildId, channelId: message.channelId, channel: message.channel, userId: message.author.id }),
@@ -306,6 +308,39 @@ export class DiscordToFrogg {
       await message.react("✅").catch(() => undefined);
     } catch (err) {
       await message.reply({ content: err instanceof UserFacingError ? err.message : explainError(err), allowedMentions: { parse: [] } }).catch(() => undefined);
+    }
+  }
+}
+
+/**
+ * Forwards messages posted in agent threads while the bot was offline (allowlisted users only,
+ * last 24 hours, up to 50 per thread). A thread with no message seen yet starts from its creation.
+ */
+export async function forwardBacklog(
+  inbound: DiscordToFrogg,
+  client: { channels: { fetch(id: string): Promise<unknown> } },
+  state: StateStore,
+  homeChannelId: string,
+  log: PluginContext["log"],
+): Promise<void> {
+  for (const [, t] of state.allThreads()) {
+    if (t.homeChannelId !== homeChannelId) continue;
+    const afterId = t.lastMessageId ?? t.threadId;
+    try {
+      const thread = (await client.channels.fetch(t.threadId)) as {
+        isThread?: () => boolean;
+        messages: { fetch(o: { after: string; limit: number }): Promise<Map<string, Message>> };
+      } | null;
+      if (!thread?.isThread?.()) continue;
+      const page = await thread.messages.fetch({ after: afterId, limit: 50 });
+      const backlog = selectBacklog(
+        [...page.values()].map((m) => ({ id: m.id, createdTimestamp: m.createdTimestamp, bot: m.author.bot, m })),
+        afterId,
+        Date.now(),
+      );
+      for (const { m } of backlog) await inbound.onMessage(m);
+    } catch (err) {
+      log.debug("discord: thread backlog failed", { threadId: t.threadId, error: String(err) });
     }
   }
 }

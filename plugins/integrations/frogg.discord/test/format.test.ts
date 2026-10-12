@@ -17,6 +17,7 @@ import {
   presenceText,
   resolvedPermissionContent,
   sanitize,
+  selectBacklog,
   statusEmbed,
   threadName,
   truncate,
@@ -186,4 +187,19 @@ test("permissionButtons matches the message's buttons for re-rendering", () => {
     permissionMessage({ request: { ...request, canAlways: true }, agent: agent(), key: "k", mentionUserIds: [], remoteControl: true }).components,
   );
   assert.equal(ORIGIN_LABEL, "discord.origin");
+});
+
+test("selectBacklog keeps recent human messages after the marker, oldest first", () => {
+  const now = 1_000_000_000_000;
+  const msgs = [
+    { id: "1000000000000000300", createdTimestamp: now - 1000, bot: false },
+    { id: "1000000000000000100", createdTimestamp: now - 5000, bot: false },
+    { id: "1000000000000000200", createdTimestamp: now - 2000, bot: true },
+    { id: "1000000000000000050", createdTimestamp: now - 9000, bot: false },
+    { id: "1000000000000000400", createdTimestamp: now - 2 * 24 * 3600 * 1000, bot: false },
+  ];
+  assert.deepEqual(
+    selectBacklog(msgs, "1000000000000000060", now).map((m) => m.id),
+    ["1000000000000000100", "1000000000000000300"],
+  );
 });

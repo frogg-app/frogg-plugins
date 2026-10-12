@@ -8,7 +8,7 @@ import { FroggToDiscord } from "./bridge.ts";
 import { FROGG_COMMAND } from "./commands.ts";
 import { KeyedDebouncer } from "./debounce.ts";
 import { inviteUrl } from "./format.ts";
-import { DiscordToFrogg } from "./interactions.ts";
+import { DiscordToFrogg, forwardBacklog } from "./interactions.ts";
 import { StateStore } from "./state.ts";
 
 type Phase =
@@ -72,6 +72,10 @@ export default async function activate(ctx: PluginContext): Promise<void> {
       try {
         const guild = await ready.guilds.fetch(cfg.guildId).catch(() => null);
         if (!guild) {
+          // Finish starting as soon as someone uses the invite link.
+          client.on(Events.GuildCreate, (g) => {
+            if (g.id === cfg.guildId && running === r) restarts.schedule("restart");
+          });
           setPhase({
             kind: "error",
             message: "The bot isn't in the configured server yet. Invite it with the link below.",
@@ -92,6 +96,7 @@ export default async function activate(ctx: PluginContext): Promise<void> {
           });
         }
         await bridge.start();
+        if (cfg.readThreadMessages) await forwardBacklog(inbound, client, state, cfg.channelId, ctx.log);
         setPhase({ kind: "connected", botTag: ready.user.tag, applicationId: ready.application.id });
         ctx.log.info("discord: connected", { bot: ready.user.tag, guild: guild.name });
       } catch (err) {

@@ -35,7 +35,8 @@ them from there. Daemon plugin, Plugins API v2. The bot only makes outbound conn
   `agent` and `project` autocomplete.
 - **Plain replies in threads** (optional): with **Read thread messages** on, anything an
   allowlisted user types in an agent's thread goes to that agent (images and files included).
-  ✅ means it was delivered and 🔒 means remote control is off.
+  ✅ means it was delivered and 🔒 means remote control is off. Messages posted while the bot was
+  offline (last 24 hours, up to 50 per thread) are forwarded when it reconnects, oldest first.
 - **Bot status** shows how many agents are running or waiting.
 
 ## Security model

@@ -48,3 +48,13 @@ test("cursors persist (batched) and survive a reload", async () => {
   assert.equal(b.thread("agent1")?.cursor, "cur-2");
   assert.equal(b.thread("nobody"), undefined);
 });
+
+test("lastMessageId only moves forward", async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), "frogg-discord-"));
+  const s = StateStore.forDataDir(dir);
+  s.setThread("a", { threadId: "t", statusChannelId: "c", statusMessageId: "m", homeChannelId: "c" });
+  s.setLastMessage("a", "1000000000000000200");
+  s.setLastMessage("a", "1000000000000000100");
+  assert.equal(s.thread("a")?.lastMessageId, "1000000000000000200");
+  await s.flush();
+});
