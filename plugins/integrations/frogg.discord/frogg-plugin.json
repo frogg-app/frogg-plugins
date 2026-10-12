@@ -1,0 +1,121 @@
+{
+  "id": "frogg.discord",
+  "name": "Discord",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "scope": "daemon",
+  "description": "A Discord thread per agent with live status, final answers and diff stats; alerts; Approve/Deny buttons for permission requests; and /frogg slash commands to start, stop and message agents.",
+  "author": "Frogg",
+  "homepage": "https://frogg.app/docs/",
+  "entry": { "daemon": "dist/daemon.js" },
+  "capabilities": [
+    "network",
+    "settings.store",
+    "ui.contribute",
+    "rpc",
+    "agent.read",
+    "agent.write",
+    "agent.manage",
+    "agent.permissions",
+    "workspaces.read",
+    "todos.read",
+    "todos.write"
+  ],
+  "contributes": {
+    "commands": [
+      { "id": "discord.reconnect", "title": "Discord: reconnect", "description": "Reconnect the Discord bot with the current settings" }
+    ],
+    "panels": [{ "id": "discord", "title": "Discord", "kind": "markdown" }],
+    "settings": [
+      {
+        "key": "botToken",
+        "title": "Bot token",
+        "type": "secret",
+        "required": true,
+        "description": "Developer Portal → your application → Bot → Reset Token."
+      },
+      {
+        "key": "guildId",
+        "title": "Server ID",
+        "type": "string",
+        "required": true,
+        "description": "The one Discord server this host is bound to (right-click the server → Copy Server ID, with Developer Mode on)."
+      },
+      {
+        "key": "channelId",
+        "title": "Agents channel ID",
+        "type": "string",
+        "required": true,
+        "description": "Text or forum channel that gets one thread per agent. Commands work here and in its threads."
+      },
+      {
+        "key": "allowedUserIds",
+        "title": "Allowed Discord user IDs",
+        "type": "string",
+        "required": true,
+        "description": "Comma-separated. Only these users can run /frogg, press buttons or message agents. Empty means nobody."
+      },
+      {
+        "key": "extraChannelIds",
+        "title": "Extra command channel IDs",
+        "type": "string",
+        "description": "Comma-separated channels (besides the agents channel) where /frogg is accepted."
+      },
+      {
+        "key": "mentionUserIds",
+        "title": "Ping on alerts",
+        "type": "string",
+        "description": "Comma-separated user IDs pinged when an agent finishes, errors or asks for permission."
+      },
+      {
+        "key": "threads",
+        "title": "Open a thread for",
+        "type": "select",
+        "default": "all",
+        "options": [
+          { "value": "all", "label": "Every agent that runs" },
+          { "value": "discord", "label": "Only agents started from Discord" }
+        ]
+      },
+      {
+        "key": "alertWhenAppActive",
+        "title": "Ping even while I'm in the app",
+        "type": "boolean",
+        "default": false,
+        "description": "Off: like push notifications, no ping while a Frogg app is in active use (the thread still updates)."
+      },
+      {
+        "key": "readThreadMessages",
+        "title": "Read thread messages",
+        "type": "boolean",
+        "default": false,
+        "description": "Forward plain messages in an agent's thread to the agent. Needs the privileged Message Content intent; otherwise use /frogg reply."
+      },
+      {
+        "key": "showToolCalls",
+        "title": "Show tool calls",
+        "type": "boolean",
+        "default": true,
+        "description": "List each turn's tool calls in its progress message."
+      },
+      {
+        "key": "presence",
+        "title": "Show agent count as bot status",
+        "type": "boolean",
+        "default": true
+      },
+      {
+        "key": "threadArchiveMinutes",
+        "title": "Archive idle threads after",
+        "type": "select",
+        "default": "1440",
+        "options": [
+          { "value": "60", "label": "1 hour" },
+          { "value": "1440", "label": "1 day" },
+          { "value": "4320", "label": "3 days" },
+          { "value": "10080", "label": "1 week" }
+        ]
+      }
+    ]
+  }
+}
