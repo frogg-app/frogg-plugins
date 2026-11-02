@@ -38,6 +38,14 @@ them from there. Daemon plugin, Plugins API v2. The bot only makes outbound conn
   ✅ means it was delivered and 🔒 means remote control is off. Messages posted while the bot was
   offline (last 24 hours, up to 50 per thread) are forwarded when it reconnects, oldest first.
 - **Bot status** shows how many agents are running or waiting.
+- **Channel history for agents** (read-only): agents on the host see Discord in Frogg's
+  `list_connectors` and call its tools through `call_connector_tool`, so they never handle the
+  bot token. `list_channels` returns the configured server, channels and active threads (with
+  each thread's agent); `read_channel_history` returns up to 100 messages, oldest first, from the
+  agents channel, an extra command channel or a thread under one, paged with `before`/`after`.
+  Other channels and servers are refused. Turn **Let agents read these channels** off to stop
+  it. Message text from other users needs the Message Content intent. Needs a host with the
+  `agent.tools` plugin host feature.
 
 ## Security model
 

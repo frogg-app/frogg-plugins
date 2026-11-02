@@ -23,6 +23,8 @@ export interface DiscordConfig {
   readThreadMessages: boolean;
   showToolCalls: boolean;
   presence: boolean;
+  /** Let agents on this host list and read the configured channels (read-only agent tools). */
+  agentTools: boolean;
   archiveMinutes: ArchiveMinutes;
 }
 
@@ -76,6 +78,7 @@ export function readConfig(raw: Record<string, unknown>): ConfigResult {
       readThreadMessages: bool(raw.readThreadMessages, false),
       showToolCalls: bool(raw.showToolCalls, true),
       presence: bool(raw.presence, true),
+      agentTools: bool(raw.agentTools, true),
       archiveMinutes: (ARCHIVE_MINUTES as readonly number[]).includes(archive)
         ? (archive as ArchiveMinutes)
         : 1440,

@@ -4,7 +4,7 @@
   "version": "0.1.1",
   "apiVersion": 2,
   "scope": "daemon",
-  "description": "A Discord thread per agent with live status, final answers and diff stats; alerts; Approve/Deny buttons for permission requests; and /frogg slash commands to start, stop and message agents.",
+  "description": "A Discord thread per agent with live status, final answers and diff stats; alerts; Approve/Deny buttons for permission requests; and /frogg slash commands to start, stop and message agents. Agents on the host get read-only tools for the configured channels' history.",
   "author": "Frogg",
   "homepage": "https://frogg.app/docs/",
   "entry": { "daemon": "dist/daemon.js" },
@@ -26,6 +26,28 @@
       { "id": "discord.reconnect", "title": "Discord: reconnect", "description": "Reconnect the Discord bot with the current settings" }
     ],
     "panels": [{ "id": "discord", "title": "Discord", "kind": "markdown" }],
+    "agentTools": [
+      {
+        "id": "list_channels",
+        "title": "List Discord channels",
+        "description": "The Discord server and channels this host's Discord connector is bound to (agents channel, extra command channels), with their active threads and the Frogg agent each thread belongs to. Read-only."
+      },
+      {
+        "id": "read_channel_history",
+        "title": "Read Discord channel history",
+        "description": "Recent messages, oldest first, in the configured agents channel, an extra command channel, or a thread under one. Defaults to the agents channel and 50 messages; page with before/after message ids. Read-only; other channels and servers are refused.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "channelId": { "type": "string", "description": "Channel or thread id from list_channels; defaults to the agents channel" },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Messages to return (default 50)" },
+            "before": { "type": "string", "description": "Only messages older than this message id" },
+            "after": { "type": "string", "description": "Only messages newer than this message id" }
+          },
+          "additionalProperties": false
+        }
+      }
+    ],
     "settings": [
       {
         "key": "botToken",
@@ -97,6 +119,13 @@
         "type": "boolean",
         "default": true,
         "description": "List each turn's tool calls in its progress message."
+      },
+      {
+        "key": "agentTools",
+        "title": "Let agents read these channels",
+        "type": "boolean",
+        "default": true,
+        "description": "Agents on this host can list the configured channels and read their recent messages through Frogg, without seeing the bot token. Read-only."
       },
       {
         "key": "presence",

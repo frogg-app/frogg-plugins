@@ -9,6 +9,7 @@ import { FROGG_COMMAND } from "./commands.ts";
 import { KeyedDebouncer } from "./debounce.ts";
 import { inviteUrl } from "./format.ts";
 import { DiscordToFrogg, forwardBacklog } from "./interactions.ts";
+import { registerAgentTools } from "./agent-tool-handlers.ts";
 import { StateStore } from "./state.ts";
 
 type Phase =
@@ -20,6 +21,8 @@ type Phase =
 interface Running {
   client: Client;
   bridge: FroggToDiscord | null;
+  /** Set once connected to the configured server; agent tools read through it. */
+  ready: Client<true> | null;
 }
 
 const DISALLOWED_INTENTS = 4014;
@@ -64,7 +67,7 @@ export default async function activate(ctx: PluginContext): Promise<void> {
     const intents = [GatewayIntentBits.Guilds];
     if (cfg.readThreadMessages) intents.push(GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent);
     const client = new Client({ intents });
-    const r: Running = { client, bridge: null };
+    const r: Running = { client, bridge: null, ready: null };
     running = r;
 
     client.once(Events.ClientReady, async (ready) => {
@@ -97,6 +100,7 @@ export default async function activate(ctx: PluginContext): Promise<void> {
         }
         await bridge.start();
         if (cfg.readThreadMessages) await forwardBacklog(inbound, client, state, cfg.channelId, ctx.log);
+        r.ready = ready;
         setPhase({ kind: "connected", botTag: ready.user.tag, applicationId: ready.application.id });
         ctx.log.info("discord: connected", { bot: ready.user.tag, guild: guild.name });
       } catch (err) {
@@ -133,6 +137,9 @@ export default async function activate(ctx: PluginContext): Promise<void> {
   ctx.settings.onChange(() => restarts.schedule("restart"));
   const remoteWatch = ctx.host?.onRemoteControlChange?.(() => ctx.ui?.refreshPanel("discord"));
 
+  registerAgentTools(ctx, state, () =>
+    running?.ready && config ? { client: running.ready, config } : null,
+  );
   ctx.rpc?.handle("panel.discord.render", () => ({ kind: "markdown", markdown: panelMarkdown(phase, config, ctx) }));
   ctx.rpc?.handle("discord.reconnect", async () => {
     await start();
